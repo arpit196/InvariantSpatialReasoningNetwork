@@ -8,3 +8,9 @@ To train and test the model and its invariance to different affine transformatio
 ```
 python run-mnist.py
 ```
+To specify the number of convolutional layers, add the argument --conv to the script. For example, to run the model with 2 convolutional layers, run:
+```
+python run-mnist.py --conv=2
+```
+
+
