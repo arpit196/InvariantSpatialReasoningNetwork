@@ -217,8 +217,8 @@ class SpatialReasoningLayer(keras.layers.Layer):
         spatial = tf.keras.activations.sigmoid(-(tf.reduce_sum(distances,[-1,-2])-self.wdb)**2)
         return x,spatial
 
-def SpatialRelationsModel():
-  inputs = layers.Input(shape=(28, 28, 4))
+def SpatialRelationsModel(image_size=28,classes=10):
+  inputs = layers.Input(shape=(image_size, image_size, 4))
   angle = inputs[:,:,:,1]; angle = tf.where(angle==1.0005072,0.0,angle); angle = tf.expand_dims(angle,-1)
   x1 = tf.tile(angle,[1,1,1,2])
   xc = LocalCurvature(x1,edge=True); xc = edim(tf.reduce_sum(xc,-1))
@@ -233,7 +233,7 @@ def SpatialRelationsModel():
 
   lc,sp = SpatialReasoningLayer(1240,8)(l)
   l = layers.Dense(3048,activation='relu',kernel_regularizer=tf.keras.regularizers.L2(0.0004))(layers.Concatenate()([lc,sp]))
-  x = layers.Dense(10,activation='softmax')(l)
+  x = layers.Dense(classes,activation='softmax')(l)
   return tf.keras.Model(inputs = inputs,outputs = x), tf.keras.Model(inputs = inputs,outputs = l)
 
 def SpatialRelationsModel2Lyr():
@@ -254,5 +254,29 @@ def SpatialRelationsModel2Lyr():
 
   lc,sp = SpatialReasoningLayer(1240,8)(l)
   l = layers.Dense(3048,activation='relu',kernel_regularizer=tf.keras.regularizers.L2(0.0004))(layers.Concatenate()([lc,sp]))
-  x = layers.Dense(10,activation='softmax')(l)
+  x = layers.Dense(classes,activation='softmax')(l)
   return tf.keras.Model(inputs = inputs,outputs = x), tf.keras.Model(inputs = inputs,outputs = l)
+
+def ConvolutionalModel(image_size=28,classes=10):
+  inputs = layers.Input(shape=(image_size, image_size, 4))
+  angle = inputs[:,:,:,1]; angle = tf.where(angle==1.0005072,0.0,angle); angle = tf.expand_dims(angle,-1)
+  x1 = tf.tile(angle,[1,1,1,1])
+  xc = LocalCurvature(x1)
+  xc2 = LocalCurvature(xc)
+  pos = inputs[:,:,:,2:]
+  inputsi = inputs[:,:,:,0:1];
+  f = bn()(layers.Conv2D(kernel_size=3,activation='relu',filters=64,kernel_initializer='glorot_normal',kernel_regularizer=tf.keras.regularizers.L2(0.0004))(inputsi))
+  l1 = apool(2,strides=2)(f)#tf.reduce_mean(f,-2); #orientation = apool(4,strides=2)(tf.cast(orientation,dtype=tf.float32))
+  l1 = bn()(layers.Conv2D(kernel_size=3,activation='relu',filters=100,kernel_initializer='glorot_normal',kernel_regularizer=tf.keras.regularizers.L2(0.0004))(l1))
+  l1 = mpool(2,strides=2)(f)#tf.reduce_mean(f,-2); #orientation = apool(4,strides=2)(tf.cast(orientation,dtype=tf.float32))
+  l1 = bn()(layers.Conv2D(kernel_size=3,activation='relu',filters=200,kernel_initializer='glorot_normal',kernel_regularizer=tf.keras.regularizers.L2(0.0004))(l1))
+  l1 = mpool(2,strides=2)(l1)
+  l1 = bn()(layers.Conv2D(kernel_size=3,activation='relu',filters=256,kernel_initializer='glorot_normal',kernel_regularizer=tf.keras.regularizers.L2(0.0004))(l1))
+  l1 = mpool(2,strides=2)(l1)
+  #l1 = bn()(layers.Dense(400,activation='relu')(l1))
+  l = layers.Flatten()(l1)
+  l = layers.Dense(2048,activation='relu',kernel_initializer='glorot_normal',kernel_regularizer=tf.keras.regularizers.L2(0.0004))(l)
+  #l1 = tf.where(l/tf.reduce_max(l,-1,keepdims=True)>0.88,l,0.0)
+  #
+  x = layers.Dense(classes,activation='softmax')(l)
+  return tf.keras.Model(inputs = inputs,outputs = x)#, tf.keras.Model(inputs = inputs,outputs = l), tf.keras.Model(inputs = inputs,outputs = l)
