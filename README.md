@@ -15,6 +15,7 @@ python run-mnist.py --model=CNN
 ```
 
 If you don't specify model, the SRN model is trained by default.
+
 To specify the number of convolutional layers, add the argument --conv to the script. For example, to run the model with 2 convolutional layers, run:
 ```
 python run-mnist.py --conv=2
